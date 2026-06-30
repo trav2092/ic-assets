@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit Proposal — Intelligent Choice</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Helvetica, Arial, sans-serif; background: #f5f3ee; padding: 40px 20px; }
+    .container { max-width: 800px; margin: 0 auto; background: #ffffff; border-radius: 8px; padding: 40px; }
+    h1 { font-size: 22px; color: #111111; margin-bottom: 4px; }
+    .subtitle { font-size: 13px; color: #8f8149; font-weight: 600; margin-bottom: 32px; }
+    .section { margin-bottom: 28px; }
+    label { display: block; font-size: 12px; font-weight: 700; color: #8f8149; letter-spacing: 0.4px; text-transform: uppercase; margin-bottom: 8px; }
+    textarea { width: 100%; padding: 12px; border: 1px solid #e0ddd6; border-radius: 4px; font-family: Helvetica, Arial, sans-serif; font-size: 13px; color: #111111; line-height: 1.6; resize: vertical; background: #faf9f7; }
+    textarea:focus { outline: none; border-color: #8f8149; }
+    .submit-btn { background: #8f8149; color: #ffffff; border: none; padding: 14px 32px; font-size: 14px; font-weight: 700; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 8px; }
+    .submit-btn:hover { background: #7a6e3f; }
+    .submit-btn:disabled { background: #c5b98a; cursor: not-allowed; }
+    .gold-rule { border: none; border-top: 1.5px solid #8f8149; margin-bottom: 32px; }
+    .success { display: none; text-align: center; padding: 40px 20px; }
+    .success h2 { font-size: 18px; color: #111111; margin-bottom: 8px; }
+    .success p { font-size: 13px; color: #888880; }
+    .loading-msg { text-align: center; padding: 40px; font-size: 13px; color: #8f8149; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loadingView" class="loading-msg">Loading proposal content...</div>
+    <div id="formView" style="display:none;">
+      <h1>Edit Proposal</h1>
+      <p class="subtitle" id="subtitle"></p>
+      <hr class="gold-rule">
+      <div class="section">
+        <label>Section 1 — What We Heard</label>
+        <textarea id="section_1" rows="8"></textarea>
+      </div>
+      <div class="section">
+        <label>Section 2 — Industry Context</label>
+        <textarea id="section_2" rows="6"></textarea>
+      </div>
+      <div class="section">
+        <label>Section 3 — Why Start Here</label>
+        <textarea id="section_3" rows="6"></textarea>
+      </div>
+      <div class="section">
+        <label>Section 4 — Engagement Narrative</label>
+        <textarea id="section_4" rows="8"></textarea>
+      </div>
+      <div class="section">
+        <label>Section 5 — Attendee Guidance</label>
+        <textarea id="section_5" rows="4"></textarea>
+      </div>
+      <div class="section">
+        <label>Section 6 — Closing Line</label>
+        <textarea id="section_6" rows="3"></textarea>
+      </div>
+      <button type="button" class="submit-btn" id="submitBtn">Regenerate Proposal</button>
+    </div>
+    <div class="success" id="successView">
+      <h2>Proposal regenerating</h2>
+      <p>Check your email shortly — a new review copy will land in your inbox.</p>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const proposalRecordId = params.get('proposalRecordId') || '';
+    const prospectId = params.get('prospectId') || '';
+    const fullName = params.get('fullName') || '';
+    const company = params.get('company') || '';
+    const safeCompany = params.get('safeCompany') || '';
+    const prospectEmail = params.get('prospectEmail') || '';
+
+    document.getElementById('subtitle').textContent = fullName + ' \u00b7 ' + company;
+
+    fetch('https://intelligent-choice.oph.st/webhook/get-proposal?proposalRecordId=' + encodeURIComponent(proposalRecordId))
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        document.getElementById('section_1').value = data.section_1 || '';
+        document.getElementById('section_2').value = data.section_2 || '';
+        document.getElementById('section_3').value = data.section_3 || '';
+        document.getElementById('section_4').value = data.section_4 || '';
+        document.getElementById('section_5').value = data.section_5 || '';
+        document.getElementById('section_6').value = data.section_6 || '';
+        document.getElementById('loadingView').style.display = 'none';
+        document.getElementById('formView').style.display = 'block';
+      })
+      .catch(function(e) {
+        document.getElementById('loadingView').textContent = 'Failed to load proposal content. Please try again.';
+        console.error(e);
+      });
+
+    document.getElementById('submitBtn').addEventListener('click', function() {
+      var btn = this;
+      btn.disabled = true;
+      btn.textContent = 'Regenerating...';
+
+      var data = {
+        action: 'regenerate',
+        proposalRecordId: proposalRecordId,
+        prospectId: prospectId,
+        fullName: fullName,
+        company: company,
+        safeCompany: safeCompany,
+        prospectEmail: prospectEmail,
+        section_1: document.getElementById('section_1').value,
+        section_2: document.getElementById('section_2').value,
+        section_3: document.getElementById('section_3').value,
+        section_4: document.getElementById('section_4').value,
+        section_5: document.getElementById('section_5').value,
+        section_6: document.getElementById('section_6').value
+      };
+
+      fetch('https://intelligent-choice.oph.st/webhook/send-proposal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }).then(function() {
+        document.getElementById('formView').style.display = 'none';
+        document.getElementById('successView').style.display = 'block';
+      }).catch(function(e) {
+        btn.disabled = false;
+        btn.textContent = 'Regenerate Proposal';
+        console.error(e);
+      });
+    });
+  </script>
+</body>
+</html>
